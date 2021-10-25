@@ -108,21 +108,22 @@ def label_from_filename(filename :str)->str:
             "Exh.", "Exh ", "Exh_"
     
     """
-    if filename[:8] in ["Exhibit.", "Exhibit_", "Exhibit "]:
+    if filename[:8].lower() in ["exhibit.", "exhibit_", "exhibit "]:
         remainder = filename[8:]
-    elif filename[:7] == "Exhibit":
+    elif filename[:7].lower() == "exhibit":
         remainder = filename[7:]
     elif filename[:4] in ["Exh.", "Exh ", "Exh_"]:
         remainder = filename[4:]
-    elif filename[:3] in ["Ex.", "Ex ", "Ex_"]:
+    elif filename[:3].lower() in ["ex.", "ex ", "ex_"]:
         remainder = filename[3:]
     else:
         # maybe the label is at the beginning
         remainder = filename
+    print(f"REM: {remainder}")
     result = label_re.match(remainder)
     if result:
         return result.group(1) if result.group(1) else result.group(2)
-    return None
+    return ""
 
 def exhibit_page(canvas, doc, font_face='Times-Bold', font_size=72):
     """
