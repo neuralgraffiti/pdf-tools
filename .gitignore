@@ -1,0 +1,6 @@
+.DS_Store
+.python-version
+build/
+dist/
+__pycache__/
+
