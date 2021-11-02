@@ -120,7 +120,7 @@ def label_from_filename(filename :str)->str:
         # maybe the label is at the beginning
         remainder = filename
     print(f"REM: {remainder}")
-    result = label_re.match(remainder)
+    result = label_re.match(remainder.strip())
     if result:
         return result.group(1) if result.group(1) else result.group(2)
     return ""
