@@ -20,7 +20,6 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.units import inch
 
-
 TITLE = "Exhibit %s"
 
 STYLES = getSampleStyleSheet()
@@ -33,7 +32,7 @@ _CLEANLIST = []
 def exhibit_with_cleanup(fn, label):
     global _CLEANLIST
     filename = fn(label)
-    _CLEANLIST.append(filename )
+    _CLEANLIST.append(filename)
     return filename
 
 def cleanup():
@@ -123,7 +122,7 @@ def label_from_filename(filename :str)->str:
     result = label_re.match(remainder.strip())
     if result:
         return result.group(1) if result.group(1) else result.group(2)
-    return ""
+    raise ValueError(f"No valid label name found for input file: {filename}")
 
 def exhibit_page(canvas, doc, font_face='Times-Bold', font_size=72):
     """
@@ -172,7 +171,7 @@ def add_slipsheet(infile, outfile, label, exh_fn):
     out = os.path.join(tempdir, 'temp.pdf')
     pdfWriter = PyPDF2.PdfFileWriter()
     print(f"Adding exhibit slipsheet '{label}' to file: '{infile}'',"
-           " writing to {outfile}")
+           f" writing to {outfile}")
     with open(out,'wb') as out_f:
         exh_file = exhibit_with_cleanup(exh_fn, label)
         ep = PyPDF2.PdfFileReader(exh_file)
@@ -187,6 +186,19 @@ def add_slipsheet(infile, outfile, label, exh_fn):
         pass
     cleanup()
 
+def is_portrait(pdf_filename):
+    pdf_reader = PyPDF2.PdfFileReader(pdf_filename)
+    deg = pdf_reader.getPage(0).get('/Rotate')    
+    page = pdf_reader.getPage(0).mediaBox
+    if page.getUpperRight_x() - page.getUpperLeft_x() > page.getUpperRight_y() -page.getLowerRight_y():
+        if deg in [0,180,None]:
+            return False
+        return True
+    else:
+        if deg in [0,180,None]:
+            return True
+        else:
+            return False
 
 def main():
     """
@@ -203,50 +215,54 @@ def main():
     for manual addition starting with an arbitrary letter or number.
     """
     parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-c", "--count", type=int, 
+                       help='Number of exhibits to generate.  Ignored unless FILE is "NONE".', default=1)
+    parser.add_argument("-o", "--orientation", choices=["landscape","portrait"],
+                        help="Page orientation (default: based on first page of FILE)")
     parser.add_argument("-l", "--label", type=str,
                         help="Number or letter to use as the initial label (e.g. \"A\" or \"1\". "
-                        "Pass 'FILE' to pull from input filename.", required=True)
-    parser.add_argument("-o", "--orientation", choices=["landscape","portrait"],
-                        help="Page orientation (default: portrait)", 
-                        default="portrait")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-c", "--count", type=int, 
-                       help='Number of exhibits to generate.  Ignored when using "-l FILE".', default=1)
-    group.add_argument("-i", "--infile", nargs='+',
+                        "By default, exhibitgen will pull from the input filename.")
+    parser.add_argument("infile", nargs='+',
                        help="Path to one or more PDFs to which an exhibit slipsheet should be added. "
-                       "Required when using \"-l FILE\".")
+                       "Use \"NONE\" to create slipsheets.")
     args = parser.parse_args()
     print(args)  
-    exhibit_fn = portrait_exhibit
-    if args.orientation == "landscape":
-        exhibit_fn = landscape_exhibit
 
     label = args.label
-    if label.lower() == 'file':
-        if len(args.infile) < 1:
-            parser.error('Must supply an input file when label is "FILE".')
-        else:
-            label = False
-    elif not _valid_label(label):
+    if label and not _valid_label(label):
         parser.error(f"Invalid label '{label}'. Valid labels are ASCII letters and integers.")
     
-    if args.infile:
+
+    if args.infile[0].lower() == "none":
+        if args.orientation == "landscape":
+            exhibit_fn = landscape_exhibit
+        else:
+            exhibit_fn = portrait_exhibit # default to portrait
+        for _ in range(args.count):        
+            exhibit_fn(label)
+            label = _next_label(label)
+
+    else:
         use_label = label
         for inf in args.infile:
+            exhibit_fn = None
+            if args.orientation == "landscape":
+                exhibit_fn = landscape_exhibit
+            elif args.orientation == "portrait":
+                exhibit_fn = portrait_exhibit 
+            else:
+                if is_portrait(inf):
+                    exhibit_fn = portrait_exhibit
+                else: 
+                    exhibit_fn = landscape_exhibit
             base = os.path.basename(inf)
             if not label:
                 use_label = label_from_filename(base)
-                if not use_label:
-                    raise ValueError(f"No valid label name found for input file: {inf}")
-                outfile = base
+                outfile = inf
             else:
                 outfile = f"Ex_{use_label}_{base}"
             add_slipsheet(inf, outfile, use_label, exhibit_fn)
             use_label = _next_label(use_label)
-    else:
-        for _ in range(args.count):        
-            exhibit_fn(label)
-            label = _next_label(label)
 
 
 
