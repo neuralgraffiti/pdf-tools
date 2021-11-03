@@ -3,4 +3,5 @@
 build/
 dist/
 __pycache__/
-
+.eggs/
+.vscode/
