@@ -39,3 +39,4 @@ optional arguments:
 ```
 ### Mac app (py2app)
 Drag-and-drop appropriately-named input files on the app to insert a slipsheet. The orientation is guessed based on the orientation of the first page.
+[Download the app here](https://github.com/neuralgraffiti/pdf-tools/releases).
