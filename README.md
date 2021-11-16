@@ -11,7 +11,8 @@ There are two programs here:
 2. double-combine: A command-line python script that will take a list of PDF files and combine them into a single document, ensuring that each document will start on a new page if the whole thing is printed double-sided.
 
 ## exhibitgen usage
-```usage: exhibitgen.py [-h] [-c COUNT] [-o {landscape,portrait}] [-l LABEL]
+```
+usage: exhibitgen.py [-h] [-c COUNT] [-o {landscape,portrait}] [-l LABEL]
                      infile [infile ...]
 
 Tool for generating and handling legal exhibits in PDF format. It can add a
