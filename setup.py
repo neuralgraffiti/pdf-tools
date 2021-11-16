@@ -9,7 +9,7 @@ from setuptools import setup
 
 APP = ['exhibitgen.py']
 DATA_FILES = []
-OPTIONS = {}
+OPTIONS = {"argv_emulation":True}
 
 setup(
     app=APP,
