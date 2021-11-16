@@ -11,6 +11,7 @@ There are two programs here:
 2. double-combine: A command-line python script that will take a list of PDF files and combine them into a single document, ensuring that each document will start on a new page if the whole thing is printed double-sided.
 
 ## exhibitgen usage
+### Command line
 ```
 usage: exhibitgen.py [-h] [-c COUNT] [-o {landscape,portrait}] [-l LABEL]
                      infile [infile ...]
@@ -36,3 +37,5 @@ optional arguments:
                         or "1". By default, exhibitgen will pull from the
                         input filename.
 ```
+### Mac app (py2app)
+Drag-and-drop appropriately-named input files on the app to insert a slipsheet. The orientation is guessed based on the orientation of the first page.
