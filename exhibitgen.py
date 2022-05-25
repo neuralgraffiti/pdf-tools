@@ -98,7 +98,7 @@ def _valid_label(input) -> bool:
     return True
 
 
-label_re = re.compile(r"([a-zA-Z])\W|(\d+)")
+label_re = re.compile(r"([-.a-zA-Z0-9]+)\W|(\d+)")
 
 
 def label_from_filename(filename: str) -> str:
@@ -127,7 +127,6 @@ def label_from_filename(filename: str) -> str:
     else:
         # maybe the label is at the beginning
         remainder = filename
-    print(f"REM: {remainder}")
     result = label_re.match(remainder.strip())
     if result:
         return result.group(1) if result.group(1) else result.group(2)
@@ -143,6 +142,10 @@ def exhibit_page(canvas, doc, font_face="Times-Bold", font_size=72):
     # canvas.setPageSize(doc.pagesize)
     canvas.setFont(font_face, font_size)
     canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 2.0, doc.title)
+    canvas.setFont(font_face, 18)
+    #canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 3.0, "CONFIDENTIAL – FILED UNDER SEAL")
+    #canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 3.0 - 20, "PURSUANT TO PROTECTIVE ORDER")
+
     canvas.restoreState()
 
 
@@ -188,10 +191,10 @@ def add_slipsheet(infile, outfile, label, exh_fn):
     tempdir = tempfile.mkdtemp()
     out = os.path.join(tempdir, "temp.pdf")
     pdfWriter = PyPDF2.PdfFileWriter()
-    print(
-        f"Adding exhibit slipsheet '{label}' to file: '{infile}'',"
-        f" writing to {outfile}"
-    )
+    #print(
+    #    f"Adding exhibit slipsheet '{label}' to file: '{infile}'',"
+    #    f" writing to {outfile}"
+    #)
     with open(out, "wb") as out_f:
         exh_file = exhibit_with_cleanup(exh_fn, label)
         ep = PyPDF2.PdfFileReader(exh_file)
@@ -267,7 +270,6 @@ def main():
         'Use "NONE" to create slipsheets.',
     )
     args = parser.parse_args()
-    print(args)
 
     label = args.label
     if label and not _valid_label(label):
@@ -287,6 +289,7 @@ def main():
     else:
         use_label = label
         for inf in args.infile:
+            #print(inf)
             exhibit_fn = None
             if args.orientation == "landscape":
                 exhibit_fn = landscape_exhibit
@@ -297,9 +300,10 @@ def main():
                     exhibit_fn = portrait_exhibit
                 else:
                     exhibit_fn = landscape_exhibit
-            base = os.path.basename(inf)
             if not label:
+                base = os.path.basename(inf)
                 use_label = label_from_filename(base)
+                print(use_label)
                 outfile = inf
             else:
                 outfile = f"Ex_{use_label}_{base}"
