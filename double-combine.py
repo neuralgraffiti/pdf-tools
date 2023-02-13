@@ -19,22 +19,24 @@ import PyPDF2
 
 def combine():
     logger = logging.getLogger("double-combine")
-    pdfWriter = PyPDF2.PdfFileWriter()
+    pdfWriter = PyPDF2.PdfWriter()
     # Hack to get around PyPDF2 bug - need to keep files open
     input_files = []
     for in_file in sys.argv[1:]:
         logger.info("Adding: %s", in_file)
         in_pdf_file = open(in_file, "rb")
         input_files.append(in_pdf_file)
-        inpdf = PyPDF2.PdfFileReader(in_pdf_file)
-        logger.info("\t %d pages", inpdf.numPages)
-        pdfWriter.appendPagesFromReader(inpdf)
-        pdfWriter.addBookmark(in_file, pdfWriter.getNumPages() - inpdf.numPages)
-        if inpdf.numPages % 2 != 0:
-            pdfWriter.addBlankPage()
+        inpdf = PyPDF2.PdfReader(in_pdf_file)
+        logger.info("\t %d pages", len(inpdf.pages))
+        pdfWriter.append_pages_from_reader(inpdf)
+        pdfWriter.add_bookmark(in_file, len(pdfWriter.pages) - len(inpdf.pages))
+        if len(inpdf.pages) % 2 != 0:
+            pdfWriter.add_blank_page()
     out_file = "combined-%d-files.pdf" % len(input_files)
     with open(out_file, "wb") as outFileObj:
-        logger.info("Writing %s, %d total pages", out_file, pdfWriter.getNumPages())
+        logger.info(
+            "Writing %s, %d total pages", out_file, len(pdfWriter.pages)
+        )
         pdfWriter.write(outFileObj)
     for inf in input_files:
         inf.close()

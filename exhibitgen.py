@@ -20,8 +20,6 @@ import reportlab.platypus
 import reportlab.lib.styles
 import reportlab.lib.units
 
-TITLE = "Exhibit %s"
-
 STYLES = reportlab.lib.styles.getSampleStyleSheet()
 
 #######################
@@ -30,9 +28,9 @@ STYLES = reportlab.lib.styles.getSampleStyleSheet()
 _CLEANLIST = []
 
 
-def exhibit_with_cleanup(fn, label):
+def exhibit_with_cleanup(fn, label, title):
     global _CLEANLIST
-    filename = fn(label)
+    filename = fn(label, title)
     _CLEANLIST.append(filename)
     return filename
 
@@ -114,13 +112,17 @@ def label_from_filename(filename: str) -> str:
             "Exhibit"
             "Ex.", Ex ", "Ex_"
             "Exh.", "Exh ", "Exh_"
+            "Appendix"
+            "App.", "App ", "App_"
 
     """
-    if filename[:8].lower() in ["exhibit.", "exhibit_", "exhibit "]:
+    if filename[:9].lower() in ["appendix.", "appendix_", "appendix "] :
+        remainder = filename[9:]
+    elif filename[:8].lower() in ["exhibit.", "exhibit_", "exhibit "]:
         remainder = filename[8:]
     elif filename[:7].lower() == "exhibit":
         remainder = filename[7:]
-    elif filename[:4] in ["Exh.", "Exh ", "Exh_"]:
+    elif filename[:4] in ["Exh.", "Exh ", "Exh_", "App.", "App_", "App "]:
         remainder = filename[4:]
     elif filename[:3].lower() in ["ex.", "ex ", "ex_"]:
         remainder = filename[3:]
@@ -141,31 +143,35 @@ def exhibit_page(canvas, doc, font_face="Times-Bold", font_size=72):
     canvas.saveState()
     # canvas.setPageSize(doc.pagesize)
     canvas.setFont(font_face, font_size)
-    canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 2.0, doc.title)
+    canvas.drawCentredString(
+        doc.pagesize[0] / 2.0, doc.pagesize[1] / 2.0, doc.title
+    )
     canvas.setFont(font_face, 18)
-    #canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 3.0, "CONFIDENTIAL – FILED UNDER SEAL")
-    #canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 3.0 - 20, "PURSUANT TO PROTECTIVE ORDER")
+    # canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 3.0, "CONFIDENTIAL – FILED UNDER SEAL")
+    # canvas.drawCentredString(doc.pagesize[0] / 2.0, doc.pagesize[1] / 3.0 - 20, "PURSUANT TO PROTECTIVE ORDER")
 
     canvas.restoreState()
 
 
-def portrait_exhibit(label):
+def portrait_exhibit(label, title="Exhibit"):
     """
     Wrapper around generate_exhibit() that specifies portrait orientation
     """
     return generate_exhibit(
-        f"Exhibit_{label}.pdf",
-        f"Exhibit {label}",
+        f"{title}_{label}.pdf",
+        f"{title} {label}",
         pagesize=reportlab.lib.pagesizes.letter,
     )
 
 
-def landscape_exhibit(label):
-    """Wrapper around generateExhibit() that specifies landscape orientation"""
+def landscape_exhibit(label, title="Exhibit"):
+    """Wrapper around generate_exhibit() that specifies landscape orientation"""
     return generate_exhibit(
-        f"Exhibit_{label}.pdf",
-        f"Exhibit {label}",
-        pagesize=reportlab.lib.pagesizes.landscape(reportlab.lib.pagesizes.letter),
+        f"{title}_{label}.pdf",
+        f"{title} {label}",
+        pagesize=reportlab.lib.pagesizes.landscape(
+            reportlab.lib.pagesizes.letter
+        ),
     )
 
 
@@ -185,22 +191,22 @@ def generate_exhibit(filename, designation, pagesize, page_callback=exhibit_page
     return filename
 
 
-def add_slipsheet(infile, outfile, label, exh_fn):
+def add_slipsheet(infile, outfile, label, exh_fn, title="Exhibit"):
     # Write to a temp file in case something goes wrong
     # conveniently also handles when infile == outfile
     tempdir = tempfile.mkdtemp()
     out = os.path.join(tempdir, "temp.pdf")
-    pdfWriter = PyPDF2.PdfFileWriter()
-    #print(
-    #    f"Adding exhibit slipsheet '{label}' to file: '{infile}'',"
-    #    f" writing to {outfile}"
-    #)
+    pdfWriter = PyPDF2.PdfWriter()
+    print(
+        f"Adding exhibit slipsheet '{label}' to file: '{infile}'',"
+        f" writing to {outfile}"
+    )
     with open(out, "wb") as out_f:
-        exh_file = exhibit_with_cleanup(exh_fn, label)
-        ep = PyPDF2.PdfFileReader(exh_file)
-        pdfWriter.appendPagesFromReader(ep)
-        content = PyPDF2.PdfFileReader(infile)
-        pdfWriter.appendPagesFromReader(content)
+        exh_file = exhibit_with_cleanup(exh_fn, label, title)
+        ep = PyPDF2.PdfReader(exh_file)
+        pdfWriter.append_pages_from_reader(ep)
+        content = PyPDF2.PdfReader(infile)
+        pdfWriter.append_pages_from_reader(content)
         pdfWriter.write(out_f)
     try:
         shutil.move(out, outfile)
@@ -211,13 +217,10 @@ def add_slipsheet(infile, outfile, label, exh_fn):
 
 
 def is_portrait(pdf_filename):
-    pdf_reader = PyPDF2.PdfFileReader(pdf_filename)
-    deg = pdf_reader.getPage(0).get("/Rotate")
-    page = pdf_reader.getPage(0).mediaBox
-    if (
-        page.getUpperRight_x() - page.getUpperLeft_x()
-        > page.getUpperRight_y() - page.getLowerRight_y()
-    ):
+    pdf_reader = PyPDF2.PdfReader(pdf_filename)
+    deg = pdf_reader.pages[0].get("/Rotate")
+    page = pdf_reader.pages[0].mediabox
+    if page.right - page.left > page.top - page.bottom:
         if deg in [0, 180, None]:
             return False
         return True
@@ -303,12 +306,16 @@ def main():
             if not label:
                 base = os.path.basename(inf)
                 use_label = label_from_filename(base)
-                print(use_label)
+                # print(use_label)
                 outfile = inf
             else:
                 outfile = f"Ex_{use_label}_{base}"
-            add_slipsheet(inf, outfile, use_label, exhibit_fn)
-            use_label = _next_label(use_label)
+            # TODO integrate the "appendix" logic more gracefully
+            if base[:3] == "App":
+                add_slipsheet(inf, outfile, use_label, exhibit_fn, "Appendix")
+            else:
+                add_slipsheet(inf, outfile, use_label, exhibit_fn)
+            #use_label = _next_label(use_label)
 
 
 if __name__ == "__main__":
